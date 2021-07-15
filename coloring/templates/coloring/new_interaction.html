@@ -47,9 +47,13 @@
 	</style>
 
 	<script type="text/javascript" canvas="canvas">
+																													var mode = 'tool-fill';
 		window.onload = function() {
 			var canvas = document.getElementById('myCanvas');
-
+			var layer0;
+			var layer1;
+			var myPath;
+			var brushSize = 16;
 			// coloring page
 			var mandala = {
 				item: null,
@@ -68,12 +72,30 @@
 				var tool = new paper.Tool();
 
 				tool.onMouseDown = function (event) {
-				    var hit = mandala.item.hitTest(event.point, { tolerance: 10, fill: true });
-				    if (hit) {
-				    		// Color pallette keeps track of the full history of colors, though we
-				    		// only color in with the most-recent color.
-				        hit.item.fillColor = cp.history[cp.history.length - 1];
-				    }
+					if (mode == 'tool-brush') {
+						myPath = new paper.Path();
+						myPath.strokeColor = cp.history[cp.history.length - 1];
+						myPath.strokeWidth = brushSize;
+						myPath.strokeCap = "round";
+						myPath.strokeJoin = "round";
+						layer0.addChild(myPath)
+					} else {
+						console.log('mouseDown, not brush')
+						var hit = mandala.item.hitTest(event.point, { tolerance: 10, fill: true });
+						if (hit) {
+							// Color pallette keeps track of the full history of colors, though we
+							// only color in with the most-recent color.
+							hit.item.fillColor = cp.history[cp.history.length - 1];
+							console.log(hit.item.fillColor);
+						}
+
+					}
+				}
+
+				tool.onMouseDrag = function (event) {
+					if (mode == 'tool-brush') {
+						myPath.add(event.point);
+					}
 				}
 			}
 
@@ -123,14 +145,24 @@
 									.addClass('border-2 border-gray-400');
 					$(this).removeClass('border-2 border-gray-400')
 							.addClass('tool-active ring-4 ring-blue-600');
-					$('#tool-size').toggle($(this).attr('id') == 'tool-brush');
-					$('#colors').toggle($(this).attr('id') != 'tool-eraser');
+					mode = $(this).attr('id');
+					$('#tool-size').toggle(mode == 'tool-brush');
+					$('#colors').toggle(mode != 'tool-eraser');
 				})
 				$('#tool-eraser').click(function() {
 					console.log('eraser');
 					cp.history.push('#ffffff');
 					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
 												.addClass('border border-gray-600');
+				})
+				$('#tool-brush').click(function () {
+					cp.history.push('#000000');
+					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
+						.addClass('border border-gray-600');
+					$('#color-swatch-19').removeClass('border border-gray-600')
+						.addClass('color-swatch-active ring-4 ring-blue-600');
+					$('.brush-size-active').removeClass('brush-size-active ring-4 ring-blue-600');
+					$('.brush-size').eq(0).addClass('brush-size-active ring-4 ring-blue-600');
 				})
 				$('#tool-fill').click(function() {
 					cp.history.push('#000000');
@@ -141,9 +173,19 @@
 				})
 				$('#tool-delete').click(function() {
 					// delete the fills
+					layer0.children.forEach(function (c) {
+						console.log('removing ', c);
+						c.remove();
+					})
 					window.setTimeout(function() {
 						$('#tool-fill').click();
 					}, 500);
+				})
+
+				$(".brush-size").click(function () {
+					$('.brush-size-active').removeClass('brush-size-active ring-4 ring-blue-600');
+					$(this).addClass('brush-size-active ring-4 ring-blue-600');
+					brushSize = parseInt($(this).attr("data-size"));
 				})
 			}
 
@@ -154,7 +196,18 @@
 
 				paper.project.importSVG(mandala.filePath, function(item) {
 					mandala.item = item._children["design-freepik"];
-				    paper.project.insertLayer(0,mandala.item);
+					layer0 = new paper.Layer({
+						children: [],
+						strokeColor: 'black',
+					});
+					paper.project.insertLayer(0, layer0);
+					layer1 = new paper.Layer({
+						children: [mandala.item]
+					})
+					paper.project.insertLayer(1, layer1);
+					layer1.activate()
+
+					mandala.item.fillColor = new paper.Color(1, 1, 1, 0.01);
 
 				    if (custom) {
 				    	myCustomInteraction();
@@ -191,7 +244,7 @@
 			<div class="justify-self-center font-medium text-lg"><span>Coloring</span></div>
 			<div class="w-64"></div>
 		</div>
-		<div class="w-2/3 min-w-min	mx-auto mt-10 rounded-md bg-white shadow-lg">
+		<div class="max-w-min mx-auto mt-10 rounded-md bg-white shadow-lg">
 			<canvas id="myCanvas" width="750px" height="750px"></canvas>
 		</div>
 		<div id="color-palette-new" class="w-24 absolute top-1/4 p-1.5 bg-white rounded-md shadow-lg">
@@ -208,9 +261,9 @@
 			<div id="tool-size">
 				<span class="text-gray-500 text-xs">Tool size</span>
 				<div class="flex flex-row justify-between items-center">
-					<div class="w-4 h-4 rounded-3xl bg-gray-500"></div>
-					<div class="w-6 h-6 rounded-3xl bg-gray-500"></div>
-					<div class="w-8 h-8 rounded-3xl bg-gray-500"></div>
+					<div data-size="16" class="brush-size w-4 h-4 rounded-3xl bg-gray-500"></div>
+					<div data-size="24" class="brush-size w-6 h-6 rounded-3xl bg-gray-500"></div>
+					<div data-size="32" class="brush-size w-8 h-8 rounded-3xl bg-gray-500"></div>
 				</div>
 			</div>
 			<div id="colors">
