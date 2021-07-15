@@ -1,0 +1,224 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  	<title>P3 Coloring</title>
+
+	<script type="text/javascript" src="{% static 'coloring/vendors/jquery/jquery-3.3.1.min.js' %}"></script>
+	<script type="text/javascript" src="{% static 'coloring/vendors/paper/paper-full.min.js' %}"></script>
+	<link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+	{% comment %} <script src="{% static 'coloring/vendors/bootstrap/js/bootstrap.min.js' %}"></script> {% endcomment %}
+	{% comment %} <link href="{% static 'coloring/vendors/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet"> {% endcomment %}
+
+	<!-- <style type="text/css" src="{% static 'coloring/vendors/paper/paper-full.min.js' %}"></script> -->
+	<style type="text/css">
+		#color-palette {
+			width: 300px;
+			background-color: #f1f1f1;
+			display: flex;
+			flex-wrap: wrap;
+			position: absolute;
+			top: 0;
+		}
+
+		.swatch {
+			width: 24px;
+			height: 24px;
+			-moz-border-radius: 12px;
+			-webkit-border-radius: 12px;
+			border-radius: 12px;
+			margin: 3px;
+		}
+
+		#myCanvas {
+			padding-left: 0;
+		    padding-right: 0;
+		    margin-left: auto;
+		    margin-right: auto;
+		    display: block;
+		}
+
+		#background {
+			background-image: url("/static/coloring/assets/wood-background.jpg");
+			background-size: cover;
+		}
+	</style>
+
+	<script type="text/javascript" canvas="canvas">
+		window.onload = function() {
+			var canvas = document.getElementById('myCanvas');
+
+			// coloring page
+			var mandala = {
+				item: null,
+				lastClicked: null,
+				filePath: '/static/coloring/images/mandala-freepik.svg'
+			};
+
+			// color palette
+			var cp = {
+				history: ["#000000"], // black selected by default
+				options: [],
+				$container: $('#colors-container')
+			}
+
+			function myCustomInteraction() {
+				var tool = new paper.Tool();
+
+				tool.onMouseDown = function (event) {
+				    var hit = mandala.item.hitTest(event.point, { tolerance: 10, fill: true });
+				    if (hit) {
+				    		// Color pallette keeps track of the full history of colors, though we
+				    		// only color in with the most-recent color.
+				        hit.item.fillColor = cp.history[cp.history.length - 1];
+				    }
+				}
+			}
+
+			// create a color palette with the given colors
+			function createColorPalette(colors){
+
+				// create a swatch for each color
+				for (var i = colors.length - 1; i >= 0; i--) {
+					var $swatch = $("<div>").css("background-color", colors[i])
+									   	.addClass("color-swatch w-6 h-6 rounded-2xl border border-gray-600 shadow-md")
+										.attr('id', `color-swatch-${i}`);
+					$swatch.click(function(){
+						// add color to the color palette history
+					  	cp.history.push($(this).css("background-color"));
+						// switch to fill tool
+						$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
+												.addClass('border border-gray-600');
+						$(this).removeClass('border border-gray-600')
+								.addClass('color-swatch-active ring-4 ring-blue-600');
+						
+					});
+					cp.$container.append($swatch);
+				}
+			}
+
+			// loads a set of colors from a json to create a color palette
+			function getColorsCreatePalette(){
+				cp.$container.html(" ");
+				$.getJSON('/static/coloring/vendors/material/material-colors.json', function(colors){
+					var keys = Object.keys(colors);
+					for (var i = keys.length - 1; i >= 0; i--) {
+						cp.options.push(colors[keys[i]][500]);
+					}
+					cp.options.push('#000000')
+					cp.options.push('#ffffff')
+					console.log('cp.options is', cp.options)
+					createColorPalette(cp.options);
+				});
+			}
+
+			function setUpTools() {
+				$('#tool-fill').removeClass('border-2 border-gray-400')
+							.addClass('tool-active ring-4 ring-blue-600');
+				$('#tool-size').toggle();
+				$('.tool').click(function() {
+					$('.tool-active').removeClass('tool-active ring-4 ring-blue-600')
+									.addClass('border-2 border-gray-400');
+					$(this).removeClass('border-2 border-gray-400')
+							.addClass('tool-active ring-4 ring-blue-600');
+					$('#tool-size').toggle($(this).attr('id') == 'tool-brush');
+					$('#colors').toggle($(this).attr('id') != 'tool-eraser');
+				})
+				$('#tool-eraser').click(function() {
+					console.log('eraser');
+					cp.history.push('#ffffff');
+					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
+												.addClass('border border-gray-600');
+				})
+				$('#tool-fill').click(function() {
+					cp.history.push('#000000');
+					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
+												.addClass('border border-gray-600');
+					$('#color-swatch-19').removeClass('border border-gray-600')
+								.addClass('color-swatch-active ring-4 ring-blue-600');
+				})
+				$('#tool-delete').click(function() {
+					// delete the fills
+					window.setTimeout(function() {
+						$('#tool-fill').click();
+					}, 500);
+				})
+			}
+
+			function init(custom){
+				paper.setup(canvas);
+				getColorsCreatePalette();
+				setUpTools();
+
+				paper.project.importSVG(mandala.filePath, function(item) {
+					mandala.item = item._children["design-freepik"];
+				    paper.project.insertLayer(0,mandala.item);
+
+				    if (custom) {
+				    	myCustomInteraction();
+				    } else {
+				    	myGradientInteraction();
+				    }
+
+				});
+			}
+
+			// Set up the mandala interactivity.
+			init(true);
+			
+			// Setup navbar
+			$(document).ready(function() {
+				const rainbowColors = ["#fc4444", "#ffa500", "#fbdb04", "#8bc34a", "#03a9f4", "#043c8c", "#673ab7", "#9c27b0", "#ec4c8c", "#fc8c84"];
+				const navTitle = "Color Your Dreams";
+				const splitNavTitle = navTitle.split('');
+				for (var i = 0; i < splitNavTitle.length; i++) {
+					var s = $(`<span>${splitNavTitle[i]}</span>`)
+							.css("color", rainbowColors[i % rainbowColors.length]);
+					$('#a-navbar-title').append(s);
+				}
+				$('#color-swatch-19').removeClass('border border-gray-600')
+								.addClass('color-swatch-active ring-4 ring-blue-600');
+			})
+		}
+	</script>
+</head>
+<body>
+	<div id="background" class="w-full h-full min-w-screen min-h-screen overflow-auto">
+		<div class="h-10 w-full flex justify-between items-center bg-white shadow-xl">
+			<div id="a-navbar-title" class="w-64 pl-4 font-bold text-2xl"></div>
+			<div class="justify-self-center font-medium text-lg"><span>Coloring</span></div>
+			<div class="w-64"></div>
+		</div>
+		<div class="w-2/3 min-w-min	mx-auto mt-10 rounded-md bg-white shadow-lg">
+			<canvas id="myCanvas" width="750px" height="750px"></canvas>
+		</div>
+		<div id="color-palette-new" class="w-24 absolute top-1/4 p-1.5 bg-white rounded-md shadow-lg">
+			<div id="tools">
+				<span class="text-gray-500 text-xs">Tools</span>
+				<div class="flex flex-row flex-wrap justify-left">
+					<div id="tool-brush"  class="tool w-9 p-1 m-0.5 rounded border-2 border-gray-400 shadow"><img src="/static/coloring/icons/paint-brush.png" alt="paint-brush"></div>
+					<div id="tool-fill"   class="tool w-9 p-1 m-0.5 rounded border-2 border-gray-400 shadow"><img src="/static/coloring/icons/fill.png" alt="fill"></div>
+					<div id="tool-eraser" class="tool w-9 p-1 m-0.5 rounded border-2 border-gray-400 shadow"><img src="/static/coloring/icons/eraser.png" alt="eraser"></div>
+					<div id="tool-delete" class="tool w-9 p-1 m-0.5 rounded border-2 border-gray-400 shadow"><img src="/static/coloring/icons/delete.png" alt="delete"></div>
+				</div>	
+			</div>
+			<!-- the tool size div shouldn't display if pencil or fill tool is activated -->
+			<div id="tool-size">
+				<span class="text-gray-500 text-xs">Tool size</span>
+				<div class="flex flex-row justify-between items-center">
+					<div class="w-4 h-4 rounded-3xl bg-gray-500"></div>
+					<div class="w-6 h-6 rounded-3xl bg-gray-500"></div>
+					<div class="w-8 h-8 rounded-3xl bg-gray-500"></div>
+				</div>
+			</div>
+			<div id="colors">
+				<span class="text-gray-500 text-xs">Colors</span>
+				<div id="colors-container" class="grid grid-cols-3 gap-1"></div>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>
