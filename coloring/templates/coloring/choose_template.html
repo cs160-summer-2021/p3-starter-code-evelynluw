@@ -1,0 +1,43 @@
+{% load static %}
+
+<html>
+
+<head>
+	<script type="text/javascript" src="{% static 'coloring/vendors/jquery/jquery-3.3.1.min.js' %}"></script>
+	<link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+	<!-- <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+    -->
+	<!-- Using https://masonry.desandro.com/ for pinterest-style layout -->
+	<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.js"></script>
+	<style type="text/css">
+		#background {
+			background-image: url("/static/coloring/assets/wood-background.jpg");
+			background-size: cover;
+		}
+	</style>
+	<script type="text/javascript">
+		// Setup navbar
+		$(document).ready(function() {
+			const rainbowColors = ["#fc4444", "#ffa500", "#fbdb04", "#8bc34a", "#03a9f4", "#043c8c", "#673ab7", "#9c27b0", "#ec4c8c", "#fc8c84"];
+			const navTitle = "Color Your Dreams";
+			const splitNavTitle = navTitle.split('');
+			for (var i = 0; i < splitNavTitle.length; i++) {
+				var s = $(`<span>${splitNavTitle[i]}</span>`)
+						.css("color", rainbowColors[i % rainbowColors.length]);
+				$('#a-navbar-title').append(s);
+			}
+		})
+	</script>
+</head>
+
+<body>
+	<div id="background" class="h-screen w-full bg-fixed">
+		<div class="h-10 w-full flex justify-between items-center bg-white shadow-xl">
+			<div id="a-navbar-title" class="w-64 pl-4 font-bold text-2xl"></div>
+			<div class="justify-self-center font-medium text-lg"><span>Choose a template</span></div>
+			<div class="w-64"></div>
+		</div>
+	</div>
+</body>
+
+</html>
