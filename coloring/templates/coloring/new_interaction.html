@@ -8,7 +8,7 @@
 
 	<script type="text/javascript" src="{% static 'coloring/vendors/jquery/jquery-3.3.1.min.js' %}"></script>
 	<script type="text/javascript" src="{% static 'coloring/vendors/paper/paper-full.min.js' %}"></script>
-	<link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+	<link href="{% static 'coloring/vendors/tailwind/tailwind.min.css' %}" rel="stylesheet">
 	{% comment %} <script src="{% static 'coloring/vendors/bootstrap/js/bootstrap.min.js' %}"></script> {% endcomment %}
 	{% comment %} <link href="{% static 'coloring/vendors/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet"> {% endcomment %}
 
@@ -79,16 +79,25 @@
 						myPath.strokeCap = "round";
 						myPath.strokeJoin = "round";
 						layer0.addChild(myPath)
+					} else if (mode == 'tool-eraser') {
+						// hit test on the fills
+						var hit = mandala.item.hitTest(event.point, { tolerance: 10, fill: true });
+						if (hit) {
+							hit.item.fillColor = new paper.Color(1, 1, 1, 0.01);
+						}
+						// hit test on the brush strokes
+						hit = layer0.hitTest(event.point);
+						if (hit) {
+							hit.item.remove();
+						}
+
 					} else {
-						console.log('mouseDown, not brush')
 						var hit = mandala.item.hitTest(event.point, { tolerance: 10, fill: true });
 						if (hit) {
 							// Color pallette keeps track of the full history of colors, though we
 							// only color in with the most-recent color.
 							hit.item.fillColor = cp.history[cp.history.length - 1];
-							console.log(hit.item.fillColor);
 						}
-
 					}
 				}
 
@@ -149,12 +158,7 @@
 					$('#tool-size').toggle(mode == 'tool-brush');
 					$('#colors').toggle(mode != 'tool-eraser');
 				})
-				$('#tool-eraser').click(function() {
-					console.log('eraser');
-					cp.history.push('#ffffff');
-					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
-												.addClass('border border-gray-600');
-				})
+
 				$('#tool-brush').click(function () {
 					cp.history.push('#000000');
 					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
@@ -164,6 +168,12 @@
 					$('.brush-size-active').removeClass('brush-size-active ring-4 ring-blue-600');
 					$('.brush-size').eq(0).addClass('brush-size-active ring-4 ring-blue-600');
 				})
+
+				$('#tool-eraser').click(function () {
+					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
+						.addClass('border border-gray-600');
+				})
+
 				$('#tool-fill').click(function() {
 					cp.history.push('#000000');
 					$('.color-swatch-active').removeClass('color-swatch-active ring-4 ring-blue-600')
@@ -171,12 +181,15 @@
 					$('#color-swatch-19').removeClass('border border-gray-600')
 								.addClass('color-swatch-active ring-4 ring-blue-600');
 				})
+
 				$('#tool-delete').click(function() {
 					// delete the fills
-					layer0.children.forEach(function (c) {
-						console.log('removing ', c);
+					children = [...layer0.children]
+					children.map(function (c) {
 						c.remove();
 					})
+					mandala.item.fillColor = new paper.Color(1, 1, 1, 0.01);
+					
 					window.setTimeout(function() {
 						$('#tool-fill').click();
 					}, 500);
